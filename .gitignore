@@ -1,0 +1,5 @@
+/.stack-work/
+TAGS
+*.DS_Store
+/dist-newstyle
+/stack.yaml.lock
