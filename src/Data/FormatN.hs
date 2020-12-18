@@ -9,6 +9,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RebindableSyntax #-}
+{-# LANGUAGE StrictData #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -fno-warn-name-shadowing #-}
@@ -32,8 +33,8 @@ module Data.FormatN
   )
 where
 
+import Data.Containers.ListUtils (nubOrd)
 import Data.Generics.Labels ()
-import Data.List (nub)
 import Data.Scientific
 import qualified Data.Text as Text
 import NumHask.Prelude
@@ -142,12 +143,18 @@ roundSig n x = scientific r' (e - length ds0)
 -- >>> prec 1 1234567
 -- "1.2e6"
 prec :: Int -> Double -> Text
-prec n x
-  | x < 0 = "-" <> prec n (- x)
-  | x == 0 = "0"
-  | x < 0.001 = expt n x
-  | x > 1e6 = expt n x
-  | otherwise = decimal n (toRealFloat x')
+prec n x = case compare x zero of
+  LT -> "-" <> prec n (- x)
+  EQ -> "0"
+  GT ->
+    bool
+      ( bool
+          (decimal n (toRealFloat x'))
+          (expt n x)
+          (x > 1e6)
+      )
+      (expt n x)
+      (x < 0.001)
   where
     x' = maybe fromFloatDigits roundSig (Just n) x
 
@@ -174,7 +181,7 @@ comma n x
   | x < 1000 || x > 1e6 = prec n x
   | otherwise = addcomma (prec n x)
   where
-    addcomma x = uncurry (<>) . first (Text.reverse . Text.intercalate "," . Text.chunksOf 3 . Text.reverse) $ Text.breakOn "." x
+    addcomma x = uncurry (<>) . first (Text.reverse . Text.intercalate "," . Text.chunksOf 3 . Text.reverse) . Text.breakOn "." $ x
 
 -- | dollars and cents, always decimal notation
 --
@@ -202,7 +209,7 @@ precision f n0 xs =
   where
     precLoop f' n xs' =
       let s = f' n <$> xs'
-       in if s == nub s || n > 4
+       in if s == nubOrd s || n > 4
             then s
             else precLoop f' (n + 1) xs'
 
