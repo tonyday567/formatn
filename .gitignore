@@ -4,3 +4,4 @@ TAGS
 /dist-newstyle
 /stack.yaml.lock
 /.hie/
+/cabal.project.local*

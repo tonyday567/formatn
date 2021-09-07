@@ -30,14 +30,19 @@ module Data.FormatN
     formatN,
     precision,
     formatNs,
+    roundSig,
+    percent,
   )
 where
 
+import Data.Bifunctor
 import Data.Containers.ListUtils (nubOrd)
 import Data.Generics.Labels ()
 import Data.Scientific
+import Data.String
+import Data.Text (Text, pack)
 import qualified Data.Text as Text
-import NumHask.Prelude
+import NumHask.Prelude hiding (prec)
 
 -- | Wrapper for the various formatting options.
 --
@@ -144,7 +149,7 @@ roundSig n x = scientific r' (e - length ds0)
 -- "1.2e6"
 prec :: Int -> Double -> Text
 prec n x = case compare x zero of
-  LT -> "-" <> prec n (- x)
+  LT -> "-" <> prec n (-x)
   EQ -> "0"
   GT ->
     bool
@@ -177,7 +182,7 @@ decimal n x = x''
 -- "1,230"
 comma :: Int -> Double -> Text
 comma n x
-  | x < 0 = "-" <> comma n (- x)
+  | x < 0 = "-" <> comma n (-x)
   | x < 1000 || x > 1e6 = prec n x
   | otherwise = addcomma (prec n x)
   where
@@ -192,7 +197,7 @@ comma n x
 -- "$0.0123"
 dollar :: Int -> Double -> Text
 dollar n x
-  | x < 0 = "-" <> dollar n (- x)
+  | x < 0 = "-" <> dollar n (-x)
   | otherwise = "$" <> comma n x
 
 -- | fixed percent, always decimal notation
