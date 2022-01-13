@@ -72,7 +72,6 @@ jobs:
           chmod a+x $HOME/.cabal/bin/cabal-docspec
           ls -la $HOME/.cabal/bin
           echo $PATH
-          cabal-docspec --version
           $HOME/.caba/bin/cabal-docspec --version
       - name: build
         run: |
@@ -83,7 +82,7 @@ jobs:
       - if: ${{ matrix.ghc == '9.2.1'}}
         name: docspec
         run: |
-          cabal-docspec --verbose
+          $HOME/.caba/bin/cabal-docspec --verbose
       - name: haddock
         run: |
           cabal haddock all
