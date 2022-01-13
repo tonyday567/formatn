@@ -65,14 +65,15 @@ jobs:
         name: install cabal-docspec
         run: |
           mkdir -p $HOME/.cabal/bin
+          echo "$HOME/.cabal/bin" >> $GITHUB_PATH
           curl -sL https://github.com/phadej/cabal-extras/releases/download/cabal-docspec-0.0.0.20210111/cabal-docspec-0.0.0.20210111.xz > cabal-docspec.xz
           echo '0829bd034fba901cbcfe491d98ed8b28fd54f9cb5c91fa8e1ac62dc4413c9562  cabal-docspec.xz' | sha256sum -c -
           xz -d < cabal-docspec.xz > $HOME/.cabal/bin/cabal-docspec
           rm -f cabal-docspec.xz
           chmod a+x $HOME/.cabal/bin/cabal-docspec
           ls -la $HOME/.cabal/bin
-          echo $PATH
-          $HOME/.caba/bin/cabal-docspec --version
+          echo $GITHUB_PATH
+          $HOME/.cabal/bin/cabal-docspec --version
       - name: build
         run: |
           cabal build all --enable-tests --write-ghc-environment-files=always
@@ -82,7 +83,7 @@ jobs:
       - if: ${{ matrix.ghc == '9.2.1'}}
         name: docspec
         run: |
-          $HOME/.caba/bin/cabal-docspec --verbose
+          $HOME/.cabal/bin/cabal-docspec --verbose
       - name: haddock
         run: |
           cabal haddock all
