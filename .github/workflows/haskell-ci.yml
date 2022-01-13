@@ -9,7 +9,7 @@ jobs:
         ghc: ['8.10.7']
         cabal: ['3.6.2.0']
         os: [ubuntu-latest, macOS-latest]
-        experimental: [true]
+        experimental: [false]
         include:
           - os: windows-latest
             ghc: '8.10.7'
@@ -71,9 +71,7 @@ jobs:
           xz -d < cabal-docspec.xz > $HOME/.cabal/bin/cabal-docspec
           rm -f cabal-docspec.xz
           chmod a+x $HOME/.cabal/bin/cabal-docspec
-          ls -la $HOME/.cabal/bin
-          echo $GITHUB_PATH
-          $HOME/.cabal/bin/cabal-docspec --version
+          cabal-docspec --version
       - name: build
         run: |
           cabal build all --enable-tests --write-ghc-environment-files=always
@@ -83,7 +81,7 @@ jobs:
       - if: ${{ matrix.ghc == '9.2.1'}}
         name: docspec
         run: |
-          $HOME/.cabal/bin/cabal-docspec --verbose
+          cabal-docspec --verbose
       - name: haddock
         run: |
           cabal haddock all
