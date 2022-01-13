@@ -6,13 +6,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ghc: ['8.10.7', '9.0.1', '9.2.1']
+        ghc: ['8.10.7']
         cabal: ['3.6.2.0']
         os: [ubuntu-latest, macOS-latest]
-        experimental: [false]
+        experimental: [true]
         include:
           - os: windows-latest
             ghc: '8.10.7'
+            experimental: true
+          - os: ubuntu-latest
+            ghc: '9.2.1'
             experimental: true
     continue-on-error: ${{ matrix.experimental }}
     name: ghc ${{ matrix.ghc }} ${{ matrix.os }}
@@ -58,7 +61,7 @@ jobs:
         with:
           path: C:\SR
           key: windows-store-meta
-      - if: ${{ matrix.os != 'windows-latest'}}
+      - if: ${{ matrix.os == 'ubuntu-latest'}} && ${{ matrix.ghc == '9.2.1'}}
         name: install cabal-docspec
         run: |
           mkdir -p $HOME/.cabal/bin
@@ -67,14 +70,18 @@ jobs:
           xz -d < cabal-docspec.xz > $HOME/.cabal/bin/cabal-docspec
           rm -f cabal-docspec.xz
           chmod a+x $HOME/.cabal/bin/cabal-docspec
+          ls -la $HOME/.cabal/bin
+          echo $PATH
           cabal-docspec --version
+          $HOME/.caba/bin/cabal-docspec --version
       - name: build
         run: |
           cabal build all --enable-tests --write-ghc-environment-files=always
       - name: test
         run: |
           cabal test all --enable-tests --write-ghc-environment-files=always
-      - name: docspec
+      - if: ${{ matrix.os == 'ubuntu-latest'}} && ${{ matrix.ghc == '9.2.1'}}
+        name: docspec
         run: |
           cabal-docspec --verbose
       - name: haddock
