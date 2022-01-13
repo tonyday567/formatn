@@ -61,7 +61,7 @@ jobs:
         with:
           path: C:\SR
           key: windows-store-meta
-      - if: ${{ matrix.os == 'ubuntu-latest'}} && ${{ matrix.ghc == '9.2.1'}}
+      - if: ${{ matrix.ghc == '9.2.1'}}
         name: install cabal-docspec
         run: |
           mkdir -p $HOME/.cabal/bin
@@ -80,7 +80,7 @@ jobs:
       - name: test
         run: |
           cabal test all --enable-tests --write-ghc-environment-files=always
-      - if: ${{ matrix.os == 'ubuntu-latest'}} && ${{ matrix.ghc == '9.2.1'}}
+      - if: ${{ matrix.ghc == '9.2.1'}}
         name: docspec
         run: |
           cabal-docspec --verbose

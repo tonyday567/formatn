@@ -198,22 +198,30 @@ sfsign s = bool "" "-" (s == SigFigNeg)
 --
 -- prop> \x -> let (SigFig s fs e) = toSigFig Nothing x in let x' = ((if (s==SigFigNeg) then (-1.0) else 1.0) * fromIntegral fs * 10.0**fromIntegral e) in (x==0 || abs (x/x'-1) < 1e-6)
 toSigFig :: Maybe Int -> Double -> SigFig
-toSigFig n x = SigFig s r' e'''
+toSigFig n x = SigFig s fs' expo
   where
-    (s, (ds, e)) = bool (SigFigPos, floatToDigits 10 x) (SigFigNeg, floatToDigits 10 (-x)) (x < 0)
-    -- floatToDigits 10 0 == ([0],0)
-    e' = bool e (e + 1) (x == 0)
-    n' = fromMaybe (length ds) n
-    -- right padding
-    (ds', e'') = bool (ds, e' - length ds) (ds <> replicate (n' - length ds) 0, e' - n') (length ds < n')
-    (ds0, ds1) = splitAt n' ds'
+    (s, (floatfs, floate)) = bool (SigFigPos, floatToDigits 10 x) (SigFigNeg, floatToDigits 10 (-x)) (x < 0)
+    -- floatToDigits 10 0 == ([0],0) floatToDigits 10 1 == ([1],1)
+    floate' = bool floate (floate + 1) (x == 0)
+    nsig = fromMaybe (length floatfs) n
+    -- pad with extra zeros if less figures than requested
+    (floatfs', e) =
+      bool
+      (floatfs, floate' - length floatfs)
+      (floatfs <> replicate (nsig - length floatfs) 0, floate' - nsig)
+      (length floatfs < nsig)
+    (fs0, fs1) = splitAt nsig floatfs'
     -- reconstitute number to get rounding right at the least significance point
-    r =
+    fs =
       round $
-        (fromIntegral $ foldl' (\x' a -> x' * 10 + a) 0 ds0 :: Double)
-          + fromIntegral (foldl' (\x' a -> x' * 10 + a) 0 ds1) / (10.0 ^ (length ds1 :: Int))
+        (fromIntegral $ foldl' (\x' a -> x' * 10 + a) 0 fs0 :: Double)
+          + fromIntegral (foldl' (\x' a -> x' * 10 + a) 0 fs1) / (10.0 ^ (length fs1 :: Int))
     -- rounding can bump significant figures by 1 eg 99(.9999) ==> 100
-    (r', e''') = bool (r, e'' + length ds' - n') (r `div` 10, e'' + length ds' - n' + 1) (length (show r) > n')
+    (fs', expo) =
+      bool
+      (fs, e + length floatfs' - nsig)
+      (fs `div` 10, e + length floatfs' - nsig + 1)
+      (length (show fs) > nsig)
 
 -- | convert from a 'SigFig' to a Double
 --
