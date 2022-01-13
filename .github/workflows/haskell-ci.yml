@@ -1,0 +1,86 @@
+on: [push]
+name: haskell-ci
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ghc: ['8.10.7', '9.0.1', '9.2.1']
+        cabal: ['3.6.2.0']
+        os: [ubuntu-latest, macOS-latest]
+        experimental: [false]
+        include:
+          - os: windows-latest
+            ghc: '8.10.7'
+            experimental: true
+    continue-on-error: ${{ matrix.experimental }}
+    name: ghc ${{ matrix.ghc }} ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Haskell
+        uses: haskell/actions/setup@v1
+        with:
+          ghc-version: ${{ matrix.ghc }}
+          cabal-version: ${{ matrix.cabal }}
+      - if: ${{ matrix.os != 'windows-latest'}}
+        name: Set linux/macOS paths
+        run: |
+          echo "CABAL_STORE_DIR=~/.cabal/store" >> $GITHUB_ENV
+          echo "CABAL_PKGS_DIR=~/.cabal/packages" >> $GITHUB_ENV
+      - name: cabal configure
+        run: |
+          cabal configure --enable-tests --write-ghc-environment-files=always --test-show-details=direct
+      - if: ${{ matrix.os != 'windows-latest'}}
+        name: cabal cache (non-windows)
+        uses: actions/cache@v2
+        env:
+          cache-name: cache-cabal
+        with:
+          path: |
+            ${{ env.CABAL_PKGS_DIR }}
+            ${{ env.CABAL_STORE_DIR }}
+          key: ${{ matrix.os }}-${{ matrix.ghc }}-build-${{ hashFiles('cabal.project') }}
+          restore-keys: |
+            ${{ matrix.os }}-${{ matrix.ghc }}-bench-${{ hashFiles('cabal.project') }}
+            ${{ matrix.os }}-${{ matrix.ghc }}-build-
+            ${{ matrix.os }}-${{ matrix.ghc }}
+      - if: ${{ matrix.os == 'windows-latest'}}
+        name: Print versions (windows)
+        run: |
+          [Environment]::GetEnvironmentVariable("Path")
+          cabal --version
+          ghc --version
+          cabal user-config init -a "http-transport: plain-http" -a "store-dir: C:\SR" -f -v3
+      - if: ${{ matrix.os == 'windows-latest'}}
+        name: restore cabal cache (windows)
+        uses: actions/cache@v1
+        with:
+          path: C:\SR
+          key: windows-store-meta
+      - if: ${{ matrix.os != 'windows-latest'}}
+        name: install cabal-docspec
+        run: |
+          mkdir -p $HOME/.cabal/bin
+          curl -sL https://github.com/phadej/cabal-extras/releases/download/cabal-docspec-0.0.0.20210111/cabal-docspec-0.0.0.20210111.xz > cabal-docspec.xz
+          echo '0829bd034fba901cbcfe491d98ed8b28fd54f9cb5c91fa8e1ac62dc4413c9562  cabal-docspec.xz' | sha256sum -c -
+          xz -d < cabal-docspec.xz > $HOME/.cabal/bin/cabal-docspec
+          rm -f cabal-docspec.xz
+          chmod a+x $HOME/.cabal/bin/cabal-docspec
+          cabal-docspec --version
+      - name: build
+        run: |
+          cabal build all --enable-tests --write-ghc-environment-files=always
+      - name: test
+        run: |
+          cabal test all --enable-tests --write-ghc-environment-files=always
+      - name: docspec
+        run: |
+          cabal-docspec --verbose
+      - name: haddock
+        run: |
+          cabal haddock all
+      - name: cabal check & sdist
+        run: |
+          cabal -vnormal check
+          cabal sdist all
