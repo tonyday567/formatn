@@ -155,7 +155,7 @@ formatN (FormatPrec n) x = prec n x
 formatN (FormatComma n) x = comma n x
 formatN (FormatExpt n) x = expt n x
 formatN (FormatDollar n) x = dollar n x
-formatN (FormatPercent n) x = percent n x
+formatN (FormatPercent n) x = percent (fixed n) x
 formatN FormatNone x = pack (show x)
 
 -- | Format to x decimal places with no significant figure rounding.
@@ -335,12 +335,15 @@ dollar n x
   | x < 0 = "-" <> dollar n (-x)
   | otherwise = "$" <> comma n x
 
--- | Format as a percentage using decimal style.
+-- | Adjust underlying format to percent.
 --
--- >>> percent (Just 2) 0.001234
--- "0.12%"
-percent :: Maybe Int -> Double -> Text
-percent n x = (<> "%") $ decimal n (100 * x)
+-- >>> percent (fixed (Just 0)) 0.1234
+-- "12%"
+--
+-- >>> percent (comma (Just 1)) 0.1234
+-- "10%"
+percent :: (Double -> Text) -> Double -> Text
+percent f x = (<> "%") $ f (100 * x)
 
 precision_ :: (Maybe Int -> Double -> Text) -> Int -> [Double] -> [Text]
 precision_ f n0 xs =
@@ -378,7 +381,7 @@ formatNs (FormatPrec n) xs = precision prec n xs
 formatNs (FormatComma n) xs = precision comma n xs
 formatNs (FormatExpt n) xs = precision expt n xs
 formatNs (FormatDollar n) xs = precision dollar n xs
-formatNs (FormatPercent n) xs = precision percent n xs
+formatNs (FormatPercent n) xs = precision (percent . fixed) n xs
 formatNs FormatNone xs = pack . show <$> xs
 
 -- | Format with the shorter of show and formatN.
