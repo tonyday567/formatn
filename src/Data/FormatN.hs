@@ -194,7 +194,7 @@ fixedSF n sf = fixed n (fromSigFig sf)
 
 -- | expt format for a SigFig
 exptSF :: SigFig -> Text
-exptSF (SigFig s i e) = pack $ sfsign s <> i'' <> "e" <> show e'
+exptSF (SigFig s i e) = pack $ sfsign s <> bool (i'' <> "e" <> show e') "0" (i==0)
   where
     i''
       | length i' == 1 = i'
@@ -215,7 +215,7 @@ exptSF (SigFig s i e) = pack $ sfsign s <> i'' <> "e" <> show e'
 exptSFWith :: Maybe Int -> SigFig -> Text
 exptSFWith eover (SigFig s i e) = pack (sfsign s) <> posDecimalSF i (e - e') <> "e" <> pack (show e')
   where
-    e' = fromMaybe (e + length (show i) - 1) eover
+    e' = fromMaybe (bool (e + length (show i) - 1) 0 (i==0)) eover
 
 -- Formatting the positive component in decimal style
 posDecimalSF :: Integer -> Int -> Text
@@ -280,6 +280,11 @@ fixed n x = pack $ showFFloat n x ""
 --
 -- >>> expt (Just 3) 0.1245
 -- "1.24e-1"
+--
+-- >>> expt (Just 2) 0
+-- "0"
+--
+-- If we wanted to have expt (Just 2) 0 == "0.0e0" then SigFig would need refactoring as it doesn't remember the desired significant figure number except through the Integer mantissa, which disappears if the number happens to be zero.
 expt :: Maybe Int -> Double -> Text
 expt n x = exptSF (toSigFig n x)
 
@@ -486,6 +491,9 @@ commaPrec n x = format (commaPrecStyle x) n x
 --
 -- >>> formats True commaPrecStyle (Just 1) $ ((1e-3)*) <$> [0,0.5,1,2]
 -- ["0.0000","0.0005","0.0010","0.0020"]
+--
+-- >>> formats True (const (ExponentStyle Nothing)) (Just 2) [0..4]
+-- ["0.0e0","1.0e0","2.0e0","3.0e0","4.0e0"]
 formats ::
   -- | left pad to the largest text length
   Bool ->
