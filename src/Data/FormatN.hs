@@ -194,7 +194,7 @@ fixedSF n sf = fixed n (fromSigFig sf)
 
 -- | expt format for a SigFig
 exptSF :: SigFig -> Text
-exptSF (SigFig s i e) = pack $ sfsign s <> bool (i'' <> "e" <> show e') "0" (i==0)
+exptSF (SigFig s i e) = pack $ sfsign s <> bool (i'' <> "e" <> show e') "0" (i == 0)
   where
     i''
       | length i' == 1 = i'
@@ -215,7 +215,7 @@ exptSF (SigFig s i e) = pack $ sfsign s <> bool (i'' <> "e" <> show e') "0" (i==
 exptSFWith :: Maybe Int -> SigFig -> Text
 exptSFWith eover (SigFig s i e) = pack (sfsign s) <> posDecimalSF i (e - e') <> "e" <> pack (show e')
   where
-    e' = fromMaybe (bool (e + length (show i) - 1) 0 (i==0)) eover
+    e' = fromMaybe (bool (e + length (show i) - 1) 0 (i == 0)) eover
 
 -- Formatting the positive component in decimal style
 posDecimalSF :: Integer -> Int -> Text
@@ -404,7 +404,7 @@ majorityStyle s xs = maj'
 
     expXs = major [x | (ExponentStyle x) <- s <$> xs]
 
-major :: Ord a => [a] -> Maybe a
+major :: (Ord a) => [a] -> Maybe a
 major xs = fst <$> listToMaybe (List.sortOn (Down . snd) $ Map.toList $ Map.fromListWith (+) ((,1 :: Integer) <$> xs))
 
 -- | format a number according to a FormatStyle and significant figures
