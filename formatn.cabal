@@ -36,10 +36,10 @@ library
   build-depends:
     , base        >=4.7  && <5
     , containers  ^>=0.6
+    -- just for cabal-docspec --check-properties
     , QuickCheck
     , text        >=1.2  && <2.1
 
-  -- just for cabal-docspec --check-properties
   exposed-modules:    Data.FormatN
   other-modules:
   default-language:   Haskell2010
