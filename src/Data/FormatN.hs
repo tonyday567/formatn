@@ -4,6 +4,9 @@
 {-# LANGUAGE StrictData #-}
 {-# LANGUAGE TupleSections #-}
 {-# OPTIONS_GHC -Wall #-}
+{-# OPTIONS_GHC -Wno-incomplete-record-updates #-}
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use =<<" #-}
 
 -- | Text formatting of 'Double's.
 --
@@ -35,6 +38,8 @@ module Data.FormatN
     toSigFig,
     fromSigFig,
     incSigFig,
+    decSigFig,
+    isZero,
 
     -- * specific formatters
     FormatStyle (..),
@@ -68,6 +73,8 @@ module Data.FormatN
     -- * list modifiers
     majorityStyle,
     formats,
+    formatsSF,
+    decSigFigs,
     distinguish,
 
     -- * FormatN
@@ -110,10 +117,10 @@ import Prelude hiding (exponent)
 --
 -- Using significant figures actually changes numbers - numbers that were slightly different end up being (and looking like) the same. 'distinguish' increases the number of significant figures to get around this.
 --
--- >>> formats False (const CommaStyle) (Just 2) $ (1e3*) <$> xs
+-- >>> formats False False (const CommaStyle) (Just 2) $ (1e3*) <$> xs
 -- ["-1,000","0","1,000","1,000","1,000","1,100","1,200"]
 --
--- >>> distinguish 4 False (const CommaStyle) (Just 2) $ (1e3*) <$> xs
+-- >>> distinguish 4 False False (const CommaStyle) (Just 2) $ (1e3*) <$> xs
 -- ["-1,000","0","1,000","1,010","1,020","1,100","1,200"]
 
 -- | Decomposition of a Double into the components that are needed to determine significant figure formatting.
@@ -123,6 +130,9 @@ import Prelude hiding (exponent)
 -- \[
 --   x == sign * figures * 10^{exponent}
 -- \]
+--
+-- Practically, treatment of zero is subject to semantic and formatting tastes. From a technical point of view, zero can be though of as having no significant figures, but in a human, textual context, 0.0000 can be a sensible rendering.
+--
 data SigFig = SigFig
   { -- | sign
     sfSign :: SigFigSign,
@@ -139,19 +149,35 @@ data SigFigSign = SigFigNeg | SigFigPos deriving (Eq, Show)
 sfsign :: SigFigSign -> String
 sfsign s = bool "" "-" (s == SigFigNeg)
 
+-- | Note that zero can still be represented in a SigFig way, so that we can distinguish between something that starts off as zero, and something that ends up as zero via rounding.
+--
+-- >>> isZero (SigFig SigFigPos 0 (-3))
+-- True
+isZero :: SigFig -> Bool
+isZero (SigFig _ i _) = i==0
+
 -- | convert from a Double to a 'SigFig'
 --
 -- >>> toSigFig (Just 2) 1234
 -- SigFig {sfSign = SigFigPos, sfFigures = 12, sfExponent = 2}
 --
 -- prop> \x -> let (SigFig s fs e) = toSigFig Nothing x in let x' = ((if (s==SigFigNeg) then (-1.0) else 1.0) * fromIntegral fs * 10.0**fromIntegral e) in (x==0 || abs (x/x'-1) < 1e-6)
+--
+-- Checks for a valid number of significant figures and turns it off on a silly number.
+--
+-- >>> toSigFig Nothing 1234
+-- SigFig {sfSign = SigFigPos, sfFigures = 1234, sfExponent = 0}
+--
+-- >>> toSigFig (Just (-3)) 1234
+-- SigFig {sfSign = SigFigPos, sfFigures = 1234, sfExponent = 0}
 toSigFig :: Maybe Int -> Double -> SigFig
 toSigFig n x = SigFig s fs' expo'
   where
+    n' = maybe Nothing (\sf -> bool (Just sf) Nothing (sf<1)) n
     (s, (floatfs, floate)) = bool (SigFigPos, floatToDigits 10 x) (SigFigNeg, floatToDigits 10 (-x)) (x < 0)
     -- floatToDigits 10 0 == ([0],0) floatToDigits 10 1 == ([1],1)
     floate' = bool floate (floate + 1) (x == 0)
-    nsig = fromMaybe (length floatfs) n
+    nsig = fromMaybe (length floatfs) n'
     -- pad with extra zeros if less figures than requested
     (floatfs', e) =
       bool
@@ -184,6 +210,14 @@ fromSigFig (SigFig s fs e) = bool 1 (-1) (s == SigFigNeg) * fromIntegral fs * 10
 incSigFig :: Int -> SigFig -> SigFig
 incSigFig n (SigFig s fs e) = SigFig s (fs * (10 ^ max 0 n)) (e - n)
 
+-- | decrease significant figures, if possible.
+decSigFig :: Int -> SigFig -> Maybe SigFig
+decSigFig n (SigFig s fs e) =
+  bool
+  Nothing
+  (Just (SigFig s (fs `div` (10 ^ n)) (e + n)))
+  (fs `mod` (10 ^ n) == 0 && n > 0)
+
 -- The natural exponent to format with
 eSF :: SigFig -> Int
 eSF (SigFig _ fs e) = e + length (show fs) - 1
@@ -194,13 +228,13 @@ fixedSF n sf = fixed n (fromSigFig sf)
 
 -- | expt format for a SigFig
 exptSF :: SigFig -> Text
-exptSF (SigFig s i e) = pack $ sfsign s <> bool (i'' <> "e" <> show e') "0" (i == 0)
+exptSF (SigFig s i e) = pack $ sfsign s <> sfTextDot <> "e" <> show eText
   where
-    i''
-      | length i' == 1 = i'
-      | otherwise = take 1 i' <> "." <> drop 1 i'
-    i' = show i
-    e' = e + length i' - 1
+    sfTextDot
+      | length sfText == 1 = sfText
+      | otherwise = take 1 sfText <> "." <> drop 1 sfText
+    sfText = bool (show i) (replicate (max 1 (1 - e)) '0') (i==0)
+    eText = e + length sfText - 1
 
 -- | expt format for a SigFig, with an exponent override
 --
@@ -282,9 +316,8 @@ fixed n x = pack $ showFFloat n x ""
 -- "1.24e-1"
 --
 -- >>> expt (Just 2) 0
--- "0"
+-- "0.0e0"
 --
--- If we wanted to have expt (Just 2) 0 == "0.0e0" then SigFig would need refactoring as it doesn't remember the desired significant figure number except through the Integer mantissa, which disappears if the number happens to be zero.
 expt :: Maybe Int -> Double -> Text
 expt n x = exptSF (toSigFig n x)
 
@@ -469,33 +502,43 @@ prec n x = format (precStyle x) n x
 commaPrec :: Maybe Int -> Double -> Text
 commaPrec n x = format (commaPrecStyle x) n x
 
--- | Consistently format a list of numbers
+-- | Consistently format a list of numbers,using the minimum number of decimal places or minimum exponent.
 --
--- >>> formats True precStyle (Just 1) [0,0.5,1,2]
+-- >>> formats True True precStyle (Just 1) [0,0.5,1,2]
 -- ["0.0","0.5","1.0","2.0"]
 --
--- >>> formats False precStyle (Just 1) $ ((-1)*) <$> [0,0.5,1,2]
+-- Note how the presence of 0.5 in the example above changes the format of all numbers. Without it:
+--
+-- >>> formats True True precStyle (Just 1) [0,1,2]
+-- ["0","1","2"]
+--
+-- >>> formats False True precStyle (Just 1) $ ((-1)*) <$> [0,0.5,1,2]
 -- ["0.0","-0.5","-1.0","-2.0"]
 --
--- >>> formats True commaPrecStyle (Just 1) $ ((-1000)*) <$> [0,0.5,1,2]
+-- >>> formats True True commaPrecStyle (Just 1) $ ((-1000)*) <$> [0,0.5,1,2]
 -- ["     0","  -500","-1,000","-2,000"]
 --
--- >>> formats True commaPrecStyle (Just 1) $ ((1e6)*) <$> [0,0.5,1,2]
+-- >>> formats True True commaPrecStyle (Just 1) $ ((1e6)*) <$> [0,0.5,1,2]
 -- ["        0","  500,000","1,000,000","2,000,000"]
 --
--- >>> formats True commaPrecStyle (Just 1) $ ((1e6)*) <$> [0.9,2,3]
+-- >>> formats True True commaPrecStyle (Just 1) $ ((1e6)*) <$> [0.9,2,3]
 -- ["0.9e6","2.0e6","3.0e6"]
 --
--- >>> formats True commaPrecStyle (Just 1) $ ((1e-6)*) <$> [0,0.5,1,2]
+-- >>> formats True True commaPrecStyle (Just 1) $ ((1e-6)*) <$> [0,0.5,1,2]
 -- ["0.0e-6","0.5e-6","1.0e-6","2.0e-6"]
 --
--- >>> formats True commaPrecStyle (Just 1) $ ((1e-3)*) <$> [0,0.5,1,2]
+-- >>> formats True True commaPrecStyle (Just 1) $ ((1e-3)*) <$> [0,0.5,1,2]
 -- ["0.0000","0.0005","0.0010","0.0020"]
 --
--- >>> formats True (const (ExponentStyle Nothing)) (Just 2) [0..4]
+-- >>> formats True False (const (ExponentStyle Nothing)) (Just 2) [0..4]
 -- ["0.0e0","1.0e0","2.0e0","3.0e0","4.0e0"]
+--
+-- >>> formats True True (const (ExponentStyle Nothing)) (Just 2) [0..4]
+-- ["0e0","1e0","2e0","3e0","4e0"]
 formats ::
   -- | left pad to the largest text length
+  Bool ->
+  -- | Try and reduce excess right-hand zeros
   Bool ->
   -- | style
   (Double -> FormatStyle) ->
@@ -504,13 +547,40 @@ formats ::
   -- | list of numbers
   [Double] ->
   [Text]
-formats lpad s n0 xs = bool fsigs (lpads fsigs) lpad
+formats lpad rcut s n0 xs =
+  formatsFromSF lpad s $
+  bool id decSigFigs rcut (formatsSF n0 xs)
+
+formatsSF ::
+  -- | significant figures requested
+  Maybe Int ->
+  -- | list of numbers
+  [Double] ->
+  [SigFig]
+formatsSF n0 xs = sigs'
   where
     sigs = toSigFig n0 <$> xs
-    minexp = minimum (sfExponent <$> filter (\x -> sfFigures x /= 0) sigs)
-    sigs' = (\x -> bool (incSigFig (sfExponent x - minexp) x) (x {sfExponent = min 1 minexp}) (sfFigures x == 0)) <$> sigs
-    maj = majorityStyle s (fromSigFig <$> sigs')
-    fsigs = formatSF maj <$> sigs'
+    minexp = minimum (sfExponent <$> filter (not . isZero) sigs)
+    sigs' = (\x -> bool (incSigFig (sfExponent x - minexp) x) (SigFig SigFigPos 0 minexp) (isZero x)) <$> sigs
+
+formatsFromSF ::
+  -- | left pad to the largest text length
+  Bool ->
+  -- | style
+  (Double -> FormatStyle) ->
+  -- | list of numbers
+  [SigFig] ->
+  [Text]
+formatsFromSF lpad s sigs = bool fsigs (lpads fsigs) lpad
+  where
+    maj = majorityStyle s (fromSigFig <$> sigs)
+    fsigs = formatSF maj <$> sigs
+
+decSigFigs :: [SigFig] -> [SigFig]
+decSigFigs xs = bool xs (decSigFigs xs') (all isJust decXs)
+  where
+    decXs = decSigFig 1 <$> xs
+    xs' = catMaybes decXs
 
 lpads :: [Text] -> [Text]
 lpads ts = (\x -> mconcat (replicate (maxl - Text.length x) " ") <> x) <$> ts
@@ -523,15 +593,33 @@ lpads ts = (\x -> mconcat (replicate (maxl - Text.length x) " ") <> x) <$> ts
 --
 -- The difference between this and 'formats' can be seen in these examples:
 --
--- >>> formats True commaPrecStyle (Just 2) [0,1,1.01,1.02,1.1,1.2]
+-- >>> formats True True commaPrecStyle (Just 2) [0,1,1.01,1.02,1.1,1.2]
 -- ["0.0","1.0","1.0","1.0","1.1","1.2"]
 --
--- >>> distinguish 4 True commaPrecStyle (Just 2) [0,1,1.01,1.02,1.1,1.2]
+-- >>> distinguish 4 True True commaPrecStyle (Just 2) [0,1,1.01,1.02,1.1,1.2]
 -- ["0.00","1.00","1.01","1.02","1.10","1.20"]
+--
+-- A common occurence is that significant figures being increased to enable textual uniqueness results in excess right zeros (after a decimal place). Consider:
+--
+-- >>> formats True False commaPrecStyle (Just 1) [0, 0.5, 1, 1.5, 2]
+-- ["0.0","0.5","1.0","2.0","2.0"]
+--
+-- Note that formats seeks With 1.5 rounding up to 2, the distinguish algorithm will increase the number of sigfigs to 2:
+--
+-- >>> distinguish 4 True False commaPrecStyle (Just 1) [0, 0.5, 1, 1.5, 2]
+-- ["0.00","0.50","1.00","1.50","2.00"]
+--
+-- The format can be simplified further by removing the excess right zeros from each formatted number:
+--
+-- >>> distinguish 4 True True commaPrecStyle (Just 2) [0, 0.5, 1, 1.5, 2]
+-- ["0.0","0.5","1.0","1.5","2.0"]
+--
 distinguish ::
   -- | maximum number of iterations
   Int ->
   -- | left pad to the largest text length
+  Bool ->
+  -- | try and reduce excess right zero pads
   Bool ->
   -- | style
   (Double -> FormatStyle) ->
@@ -540,54 +628,54 @@ distinguish ::
   -- | list of numbers
   [Double] ->
   [Text]
-distinguish maxi pad f n xs =
+distinguish maxi pad cutr f n xs =
   case n of
-    Nothing -> formats pad f Nothing xs
-    Just n0 -> loop n0 xs
+    Nothing -> formats pad cutr f Nothing xs
+    Just n0 -> loopSF n0
   where
-    loop n' xs' =
-      let s = formats pad f (Just n') xs'
-       in bool (loop (1 + n') xs') s (s == nubOrd s || n' > maxi)
+    loopSF n' = bool (loopSF (1 + n')) s (s == nubOrd s || n' > maxi)
+      where
+        s = formats pad cutr f (Just n') xs
 
 -- | Wrapper for the various formatting options.
 --
 -- >>> defaultFormatN
--- FormatN {fstyle = FSCommaPrec, sigFigs = Just 2, addLPad = True}
-data FormatN = FormatN {fstyle :: FStyle, sigFigs :: Maybe Int, addLPad :: Bool} deriving (Eq, Show, Generic)
+-- FormatN {fstyle = FSCommaPrec, sigFigs = Just 2, addLPad = True, cutRightZeros = True}
+data FormatN = FormatN {fstyle :: FStyle, sigFigs :: Maybe Int, addLPad :: Bool, cutRightZeros :: Bool} deriving (Eq, Show, Generic)
 
 -- | The official FormatN
 defaultFormatN :: FormatN
-defaultFormatN = FormatN FSCommaPrec (Just 2) True
+defaultFormatN = FormatN FSCommaPrec (Just 2) True True
 
 -- | run a 'FormatN'
 --
 -- >>> formatN defaultFormatN 1234
 -- "1,200"
 formatN :: FormatN -> Double -> Text
-formatN (FormatN FSDecimal sf _) x = format DecimalStyle sf x
-formatN (FormatN (FSExponent n) sf _) x = format (ExponentStyle n) sf x
-formatN (FormatN FSComma sf _) x = format CommaStyle sf x
-formatN (FormatN (FSFixed n) sf _) x = format (FixedStyle n) sf x
-formatN (FormatN FSPercent sf _) x = format PercentStyle sf x
-formatN (FormatN FSDollar sf _) x = format DollarStyle sf x
-formatN (FormatN FSPrec sf _) x = format (precStyle x) sf x
-formatN (FormatN FSCommaPrec sf _) x = format (commaPrecStyle x) sf x
-formatN (FormatN FSNone _ _) x = pack (show x)
+formatN (FormatN FSDecimal sf _ _) x = format DecimalStyle sf x
+formatN (FormatN (FSExponent n) sf _ _) x = format (ExponentStyle n) sf x
+formatN (FormatN FSComma sf _ _) x = format CommaStyle sf x
+formatN (FormatN (FSFixed n) sf _ _) x = format (FixedStyle n) sf x
+formatN (FormatN FSPercent sf _ _) x = format PercentStyle sf x
+formatN (FormatN FSDollar sf _ _) x = format DollarStyle sf x
+formatN (FormatN FSPrec sf _ _) x = format (precStyle x) sf x
+formatN (FormatN FSCommaPrec sf _ _) x = format (commaPrecStyle x) sf x
+formatN (FormatN FSNone _ _ _) x = pack (show x)
 
 -- | Consistently format a list of numbers via using 'distinguish'.
 --
 -- >>> formatNs 4 defaultFormatN [0,1,1.01,1.02,1.1,1.2]
 -- ["0.00","1.00","1.01","1.02","1.10","1.20"]
 formatNs :: Int -> FormatN -> [Double] -> [Text]
-formatNs maxi (FormatN FSDecimal sf pad) x = distinguish maxi pad (const DecimalStyle) sf x
-formatNs maxi (FormatN (FSExponent n) sf pad) x = distinguish maxi pad (const (ExponentStyle n)) sf x
-formatNs maxi (FormatN FSComma sf pad) x = distinguish maxi pad (const CommaStyle) sf x
-formatNs maxi (FormatN (FSFixed n) sf pad) x = distinguish maxi pad (const (FixedStyle n)) sf x
-formatNs maxi (FormatN FSPercent sf pad) x = distinguish maxi pad (const PercentStyle) sf x
-formatNs maxi (FormatN FSDollar sf pad) x = distinguish maxi pad (const DollarStyle) sf x
-formatNs maxi (FormatN FSPrec sf pad) x = distinguish maxi pad precStyle sf x
-formatNs maxi (FormatN FSCommaPrec sf pad) x = distinguish maxi pad commaPrecStyle sf x
-formatNs _ (FormatN FSNone _ pad) x = bool id lpads pad $ pack . show <$> x
+formatNs maxi (FormatN FSDecimal sf pad cutr) x = distinguish maxi pad cutr (const DecimalStyle) sf x
+formatNs maxi (FormatN (FSExponent n) sf pad cutr) x = distinguish maxi pad cutr (const (ExponentStyle n)) sf x
+formatNs maxi (FormatN FSComma sf pad cutr) x = distinguish maxi pad cutr (const CommaStyle) sf x
+formatNs maxi (FormatN (FSFixed n) sf pad cutr) x = distinguish maxi pad cutr (const (FixedStyle n)) sf x
+formatNs maxi (FormatN FSPercent sf pad cutr) x = distinguish maxi pad cutr (const PercentStyle) sf x
+formatNs maxi (FormatN FSDollar sf pad cutr) x = distinguish maxi pad cutr (const DollarStyle) sf x
+formatNs maxi (FormatN FSPrec sf pad cutr) x = distinguish maxi pad cutr precStyle sf x
+formatNs maxi (FormatN FSCommaPrec sf pad cutr) x = distinguish maxi pad cutr commaPrecStyle sf x
+formatNs _ (FormatN FSNone _ pad _) x = bool id lpads pad $ pack . show <$> x
 
 -- | Format with the shorter of show and a style.
 --
