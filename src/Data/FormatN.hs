@@ -6,6 +6,7 @@
 {-# OPTIONS_GHC -Wall #-}
 {-# OPTIONS_GHC -Wno-incomplete-record-updates #-}
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
 {-# HLINT ignore "Use =<<" #-}
 
 -- | Text formatting of 'Double's.
@@ -132,7 +133,6 @@ import Prelude hiding (exponent)
 -- \]
 --
 -- Practically, treatment of zero is subject to semantic and formatting tastes. From a technical point of view, zero can be though of as having no significant figures, but in a human, textual context, 0.0000 can be a sensible rendering.
---
 data SigFig = SigFig
   { -- | sign
     sfSign :: SigFigSign,
@@ -154,7 +154,7 @@ sfsign s = bool "" "-" (s == SigFigNeg)
 -- >>> isZero (SigFig SigFigPos 0 (-3))
 -- True
 isZero :: SigFig -> Bool
-isZero (SigFig _ i _) = i==0
+isZero (SigFig _ i _) = i == 0
 
 -- | convert from a Double to a 'SigFig'
 --
@@ -173,7 +173,7 @@ isZero (SigFig _ i _) = i==0
 toSigFig :: Maybe Int -> Double -> SigFig
 toSigFig n x = SigFig s fs' expo'
   where
-    n' = maybe Nothing (\sf -> bool (Just sf) Nothing (sf<1)) n
+    n' = maybe Nothing (\sf -> bool (Just sf) Nothing (sf < 1)) n
     (s, (floatfs, floate)) = bool (SigFigPos, floatToDigits 10 x) (SigFigNeg, floatToDigits 10 (-x)) (x < 0)
     -- floatToDigits 10 0 == ([0],0) floatToDigits 10 1 == ([1],1)
     floate' = bool floate (floate + 1) (x == 0)
@@ -214,9 +214,9 @@ incSigFig n (SigFig s fs e) = SigFig s (fs * (10 ^ max 0 n)) (e - n)
 decSigFig :: Int -> SigFig -> Maybe SigFig
 decSigFig n (SigFig s fs e) =
   bool
-  Nothing
-  (Just (SigFig s (fs `div` (10 ^ n)) (e + n)))
-  (fs `mod` (10 ^ n) == 0 && n > 0)
+    Nothing
+    (Just (SigFig s (fs `div` (10 ^ n)) (e + n)))
+    (fs `mod` (10 ^ n) == 0 && n > 0)
 
 -- The natural exponent to format with
 eSF :: SigFig -> Int
@@ -233,7 +233,7 @@ exptSF (SigFig s i e) = pack $ sfsign s <> sfTextDot <> "e" <> show eText
     sfTextDot
       | length sfText == 1 = sfText
       | otherwise = take 1 sfText <> "." <> drop 1 sfText
-    sfText = bool (show i) (replicate (max 1 (1 - e)) '0') (i==0)
+    sfText = bool (show i) (replicate (max 1 (1 - e)) '0') (i == 0)
     eText = e + length sfText - 1
 
 -- | expt format for a SigFig, with an exponent override
@@ -317,7 +317,6 @@ fixed n x = pack $ showFFloat n x ""
 --
 -- >>> expt (Just 2) 0
 -- "0.0e0"
---
 expt :: Maybe Int -> Double -> Text
 expt n x = exptSF (toSigFig n x)
 
@@ -549,7 +548,7 @@ formats ::
   [Text]
 formats lpad rcut s n0 xs =
   formatsFromSF lpad s $
-  bool id decSigFigs rcut (formatsSF n0 xs)
+    bool id decSigFigs rcut (formatsSF n0 xs)
 
 formatsSF ::
   -- | significant figures requested
@@ -613,7 +612,6 @@ lpads ts = (\x -> mconcat (replicate (maxl - Text.length x) " ") <> x) <$> ts
 --
 -- >>> distinguish 4 True True commaPrecStyle (Just 2) [0, 0.5, 1, 1.5, 2]
 -- ["0.0","0.5","1.0","1.5","2.0"]
---
 distinguish ::
   -- | maximum number of iterations
   Int ->
