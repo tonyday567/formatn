@@ -34,11 +34,11 @@ library
     -Wincomplete-uni-patterns -Wredundant-constraints
 
   build-depends:
-    , base        >=4.7  && <5
-    , containers  ^>=0.6
+    , base >= 4.7 && < 5
+    , containers >= 0.6 && < 0.7
+    , text >= 1.2 && < 2.1
     -- just for cabal-docspec --check-properties
-    , QuickCheck
-    , text        >=1.2  && <2.1
+    , QuickCheck >= 2.14.2 && < 2.15
 
   exposed-modules:    Data.FormatN
   other-modules:
