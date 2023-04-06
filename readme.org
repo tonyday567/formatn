@@ -17,18 +17,24 @@ A library for support of:
 :set -XOverloadedStrings
 import Data.FormatN
 
-xs = [(-1),0,1,1.01,1.02,1.1,1.2]
+xs = [(-1),0,0.1,1,1.01,1.02,1.1,1.2]
 
 fixed (Just 2) <$> xs
+decimal (Just 2) <$> xs
+formats False False (const DecimalStyle) (Just 2) xs
+formats False True (const DecimalStyle) (Just 2) xs
+distinguish 4 False True (const DecimalStyle) (Just 2) xs
 #+end_src
 
 #+RESULTS:
-: [1 of 1] Compiling Data.FormatN     ( src/Data/FormatN.hs, interpreted )
-: Ok, one module loaded.
-: ghci> Ok, one module loaded.
+: Ok, 14 modules loaded.
+: > >
 : >
-: >
-: > ["-1.00","0.00","1.00","1.01","1.02","1.10","1.20"]
+: > ["-1.00","0.00","0.10","1.00","1.01","1.02","1.10","1.20"]
+: ["-1.0","0.0","0.10","1.0","1.0","1.0","1.1","1.2"]
+: ["-1.00","0.00","0.10","1.00","1.00","1.00","1.10","1.20"]
+: ["-1.0","0.0","0.1","1.0","1.0","1.0","1.1","1.2"]
+: ["-1.00","0.00","0.10","1.00","1.01","1.02","1.10","1.20"]
 
 * getting 0 right
 
