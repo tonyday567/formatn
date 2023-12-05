@@ -1,4 +1,4 @@
-#+TITLE: chart-svg
+#+TITLE: formatn
 
 [[https://hackage.haskell.org/package/formatn][file:https://img.shields.io/hackage/v/formatn.svg]] [[https://github.com/tonyday567/formatn/actions?query=workflow%3Ahaskell-ci][file:https://github.com/tonyday567/formatn/workflows/haskell-ci/badge.svg]]
 

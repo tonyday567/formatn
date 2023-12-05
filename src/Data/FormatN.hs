@@ -91,12 +91,12 @@ import Data.Bifunctor
 import Data.Bool
 import Data.Containers.ListUtils (nubOrd)
 import Data.Foldable
-import qualified Data.List as List
-import qualified Data.Map.Strict as Map
+import Data.List qualified as List
+import Data.Map.Strict qualified as Map
 import Data.Maybe
 import Data.Ord
 import Data.Text (Text, pack)
-import qualified Data.Text as Text
+import Data.Text qualified as Text
 import GHC.Generics hiding (prec)
 import Numeric
 import Prelude hiding (exponent)
