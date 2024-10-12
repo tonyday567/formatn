@@ -6,3 +6,5 @@ TAGS
 /.hie/
 /cabal.project.local*
 /.hkgr/
+/.ghc.environment.aarch64-darwin-9.10.1
+/checklist.org
