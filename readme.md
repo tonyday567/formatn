@@ -1,14 +1,10 @@
-
-# formatn 
-
-[![img](https://img.shields.io/hackage/v/formatn.svg)](https://hackage.haskell.org/package/formatn) [![img](https://github.com/tonyday567/formatn/workflows/haskell-ci/badge.svg)](https://github.com/tonyday567/formatn/actions?query=workflow%3Ahaskell-ci)
+[![img](https://img.shields.io/hackage/v/formatn.svg)](https://hackage.haskell.org/package/formatn) [![img](https://github.com/tonyday567/formatn/actions/workflows/haskell-ci.yml/badge.svg)](https://github.com/tonyday567/formatn/actions/workflows/haskell-ci.yml)
 
 A library for support of:
 
 -   significant figure rounding of numbers, and
 -   common number formatting patterns.
 
-<a id="org95ded84"></a>
 
 # Usage
 
@@ -37,12 +33,8 @@ A library for support of:
     ["-1.00","0.00","0.10","1.00","1.01","1.02","1.10","1.20"]
 
 
-<a id="orgb82f98d"></a>
-
 # getting 0 right
 
-
-<a id="orgaf42992"></a>
 
 ## fixed
 
@@ -57,8 +49,6 @@ fixed defaults to representing Doubles in the same manner as Haskell does ie wit
     ["0.0","0.5","1.5","2.0"]
 
 
-<a id="org1b53172"></a>
-
 ## expt
 
     expt Nothing 0
@@ -72,8 +62,6 @@ fixed defaults to representing Doubles in the same manner as Haskell does ie wit
     0.0e0
 
 
-<a id="org90e32fb"></a>
-
 ## decimal
 
     decimal Nothing 0
@@ -85,8 +73,6 @@ fixed defaults to representing Doubles in the same manner as Haskell does ie wit
     0.00
 
 
-<a id="orgbe4b502"></a>
-
 ## percent
 
 percent is a little weird any way you cut it.
@@ -97,8 +83,6 @@ percent is a little weird any way you cut it.
     0.0%
     100.0%
 
-
-<a id="org549dfe5"></a>
 
 ## inclusion in lists
 
