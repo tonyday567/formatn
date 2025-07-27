@@ -81,6 +81,7 @@ where
 import Data.Bifunctor
 import Data.Bool
 import Data.Containers.ListUtils (nubOrd)
+import Data.Data
 import Data.Foldable
 import Data.List qualified as List
 import Data.Map.Strict qualified as Map
@@ -402,7 +403,7 @@ data FStyle
   | FSPrec
   | FSCommaPrec
   | FSNone
-  deriving (Show, Eq, Ord)
+  deriving (Eq, Show, Generic, Data)
 
 -- | Compute the majority (modal) FormatStyle so a list of numbers can all have the same formatting
 --
@@ -614,7 +615,15 @@ distinguish maxi pad cutr f n xs =
 --
 -- >>> defaultFormatN
 -- FormatN {fstyle = FSCommaPrec, sigFigs = Just 2, maxDistinguishIterations = 4, addLPad = True, cutRightZeros = True}
-data FormatN = FormatN {fstyle :: FStyle, sigFigs :: Maybe Int, maxDistinguishIterations :: Int, addLPad :: Bool, cutRightZeros :: Bool} deriving (Eq, Show, Generic)
+data FormatN
+  = FormatN
+  { fstyle :: FStyle,
+    sigFigs :: Maybe Int,
+    maxDistinguishIterations :: Int,
+    addLPad :: Bool,
+    cutRightZeros :: Bool
+  }
+  deriving (Eq, Show, Generic, Data)
 
 -- | The official FormatN
 defaultFormatN :: FormatN
