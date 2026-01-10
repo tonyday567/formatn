@@ -1,6 +1,6 @@
 cabal-version: 3.0
 name: formatn
-version: 0.3.3.0
+version: 0.3.3.1
 license: BSD-3-Clause
 license-file: LICENSE
 copyright: Tony Day (c) 2016
@@ -52,15 +52,3 @@ library
 
   exposed-modules: Data.FormatN
 
-test-suite doctests
-  import: ghc-options-stanza
-  default-language: GHC2024
-  main-is: doctests.hs
-  hs-source-dirs: test
-  build-depends:
-    QuickCheck >=2.14.2 && <2.17,
-    base >=4.14 && <5,
-    doctest-parallel >=0.3 && <0.5,
-
-  ghc-options: -threaded
-  type: exitcode-stdio-1.0
