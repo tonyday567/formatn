@@ -403,7 +403,7 @@ data FStyle
   | FSPrec
   | FSCommaPrec
   | FSNone
-  deriving (Eq, Show, Generic, Data)
+  deriving (Eq, Show, Read, Generic, Data)
 
 -- | Compute the majority (modal) FormatStyle so a list of numbers can all have the same formatting
 --
@@ -623,7 +623,7 @@ data FormatN
     addLPad :: Bool,
     cutRightZeros :: Bool
   }
-  deriving (Eq, Show, Generic, Data)
+  deriving (Eq, Show, Read, Generic, Data)
 
 -- | The official FormatN
 defaultFormatN :: FormatN
