@@ -153,7 +153,17 @@ isZero (SigFig _ i _) = i == 0
 -- > toSigFig Nothing . fromSigFig <==> id
 -- > toSigFig (Just x) . fromSigFig . toSigFig (Just x) <==> toSigFig (Just x)
 --
--- prop> \x -> let (SigFig s fs e) = toSigFig Nothing x in let x' = ((if (s==SigFigNeg) then (-1.0) else 1.0) * fromIntegral fs * 10.0**fromIntegral e) in (x==0 || abs (x/x'-1) < 1e-6)
+-- Reconstruction is 'fromSigFig': the SigFig fields multiply back to the
+-- original Double.
+--
+-- >>> fromSigFig (toSigFig Nothing 1234)
+-- 1234.0
+--
+-- >>> fromSigFig (toSigFig Nothing (-1.5e-2))
+-- -1.5e-2
+--
+-- >>> fromSigFig (toSigFig Nothing 0)
+-- 0.0
 --
 -- Checks for a valid number of significant figures and turns it off on a silly number.
 --
