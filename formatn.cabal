@@ -51,4 +51,3 @@ library
     text >=1.2 && <2.2,
 
   exposed-modules: Data.FormatN
-
