@@ -1,0 +1,4 @@
+packages:
+  formatn.cabal
+
+write-ghc-environment-files: always

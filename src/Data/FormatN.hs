@@ -175,7 +175,7 @@ isZero (SigFig _ i _) = i == 0
 toSigFig :: Maybe Int -> Double -> SigFig
 toSigFig n x = SigFig s fs' expo'
   where
-    n' = maybe Nothing (\sf -> bool (Just sf) Nothing (sf < 1)) n
+    n' = (\sf -> bool (Just sf) Nothing (sf < 1)) =<< n
     (s, (floatfs, floate)) = bool (SigFigPos, floatToDigits 10 x) (SigFigNeg, floatToDigits 10 (-x)) (x < 0)
     -- floatToDigits 10 0 == ([0],0) floatToDigits 10 1 == ([1],1)
     floate' = bool floate (floate + 1) (x == 0)
